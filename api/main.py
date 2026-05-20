@@ -2,12 +2,28 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
+from contextlib import asynccontextmanager
+import os
+
+from .models.database import init_db
+from .routes.admin import router as admin_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if os.getenv("OPENAGENTS_SKIP_INIT_DB") != "1":
+        init_db()
+    yield
+
 
 app = FastAPI(
     title="OpenAgents API",
     description="Off-chain indexer and agent discovery API for the OpenAgents protocol",
     version="0.1.0",
+    lifespan=lifespan,
 )
+
+app.include_router(admin_router)
 
 
 class AgentResponse(BaseModel):
