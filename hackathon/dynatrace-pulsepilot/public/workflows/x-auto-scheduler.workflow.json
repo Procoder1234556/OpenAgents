@@ -1,0 +1,120 @@
+{
+  "name": "OpenAgents X Auto Scheduler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "openagents-social",
+        "responseMode": "onReceived",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        360,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const scheduled = new Date($json.scheduled_for);\nreturn [{ json: { ...$json, scheduled_for: scheduled.toISOString() } }];"
+      },
+      "id": "normalize",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "specificTime",
+        "dateTime": "={{$json.scheduled_for}}"
+      },
+      "id": "wait-until",
+      "name": "Wait Until Publish Time",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        820,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.x.com/2/tweets",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "xOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": [$json.topic, $json.cta, ($json.hashtags || []).map(tag => `#${tag.replace(/^#/, \"\")}`).join(\" \")].filter(Boolean).join(\" \\n\\n\")\n}"
+      },
+      "id": "publish-x",
+      "name": "Publish to X",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1060,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Payload": {
+      "main": [
+        [
+          {
+            "node": "Wait Until Publish Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Until Publish Time": {
+      "main": [
+        [
+          {
+            "node": "Publish to X",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "x"
+    },
+    {
+      "name": "automation"
+    }
+  ],
+  "triggerCount": 0,
+  "versionId": "1"
+}
